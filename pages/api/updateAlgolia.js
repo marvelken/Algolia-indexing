@@ -7,29 +7,34 @@ const index = client.initIndex('Directus');
 
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
-
-  const { trigger, record } = req.body;
-
-  try {
-    switch (trigger) {
-      case 'create':
-        await index.saveObject(record);
-        break;
-      case 'update':
-        await index.partialUpdateObject(record);
-        break;
-      case 'delete':
-        await index.deleteObject(record.id);
-        break;
-      default:
-        throw new Error('Unsupported trigger');
+    if (req.method !== 'POST') {
+      return res.status(405).json({ message: 'Method not allowed' });
     }
-
-    res.status(200).json({ message: 'Success' });
-  } catch (error) {
-    res.status(500).json({ message: 'Error updating Algolia', error: error.message });
+  
+    const { trigger, records } = req.body;
+  
+    try {
+      if (!Array.isArray(records)) {
+        throw new Error('Records should be an array');
+      }
+  
+      switch (trigger) {
+        case 'create':
+          await index.saveObjects(records);
+          break;
+        case 'update':
+          await index.partialUpdateObjects(records);
+          break;
+        case 'delete':
+          const objectIDs = records.map(record => record.id);
+          await index.deleteObjects(objectIDs);
+          break;
+        default:
+          throw new Error('Unsupported trigger');
+      }
+  
+      res.status(200).json({ message: 'Success' });
+    } catch (error) {
+      res.status(500).json({ message: 'Error updating Algolia', error: error.message });
+    }
   }
-}
